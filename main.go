@@ -102,7 +102,7 @@ func main() {
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					//TODO: On Windows10, the file watcher triggers twice for each file change
 					log.Info().Msgf("File modified: %s", event.Name)
-					go processMonitorFile()
+					processMonitorFile()
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -120,7 +120,7 @@ func main() {
 	}
 
 	// Process the monitor file for the first time
-	processMonitorFile()
+	//processMonitorFile()
 
 	// Block until Interrupt or Kill signal is received
 	c := make(chan os.Signal, 1)
@@ -166,6 +166,12 @@ func processMonitorFile() {
 // queryBazaar queries the Bazaar for the item and writes the results to the CSV file
 func queryBazaar(queryID, itemName string) {
 	log.Debug().Str("queryID", queryID).Msgf("Querying Bazaar for item '%s'", itemName)
+
+	// If we have already queried this ID, don't do another
+	if getQuery(queryID) != "" {
+		log.Debug().Str("queryID", queryID).Msg("Duplicate query. Skipping.")
+		return
+	}
 
 	// Update the queries map with the queryID and itemName
 	updateQueries(queryID, itemName)
@@ -272,6 +278,15 @@ func writeCSV(dataRows [][]string) {
 			log.Fatal().Msgf("Error writing row: %+v", err)
 		}
 	}
+}
+
+func getQuery(queryID string) string {
+	queriesMutex.Lock()
+	defer queriesMutex.Unlock()
+	if result, ok := queries[queryID]; ok {
+		return result
+	}
+	return ""
 }
 
 func updateQueries(queryID, search string) {
