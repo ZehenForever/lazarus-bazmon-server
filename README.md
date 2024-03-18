@@ -15,7 +15,7 @@ This is achieved by running two scripts:
 ## Usage
 
 ### Set up the front end
-Setting up and using the the front end Lua script can be found in [its repository](https://www.lazaruseq.com/Magelo/index.php?page=bazaar).
+Setting up and using the the front end Lua script can be found in [its repository](https://github.com/ZehenForever/lazarus-bazmon-lua).
 
 ### Set up the backend (this)
 
