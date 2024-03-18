@@ -1,6 +1,6 @@
 module github.com/zehenforever/lazarus-bazmon-server
 
-go 1.22.1
+go 1.22
 
 require (
 	github.com/antchfx/htmlquery v1.3.0
