@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/antchfx/htmlquery"
+	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/ini.v1"
@@ -25,7 +26,7 @@ var logLevel = flag.String("logLevel", "info", "Log level (debug, info, warn, er
 var monitorFile string
 var resultsFile string
 
-var queries map[string]string
+var queries = make(map[string]string)
 var queriesMutex = &sync.Mutex{}
 
 var reItemName = regexp.MustCompile(`\/name\|(.[^\/]+)`)
@@ -82,6 +83,54 @@ func main() {
 	log.Info().Msgf("Using monitor file: %s", monitorFile)
 	log.Info().Msgf("Using results file: %s", resultsFile)
 
+	// Watch the monitor file for changes
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatal().Msgf("Error creating file watcher for %s: %+v", monitorFile, err)
+	}
+	defer watcher.Close()
+
+	// Watch the monitor file for changes
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				log.Debug().Msgf("File event: %+v", event)
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					//TODO: On Windows10, the file watcher triggers twice for each file change
+					log.Info().Msgf("File modified: %s", event.Name)
+					go processMonitorFile()
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Error().Msgf("File watcher error: %+v", err)
+			}
+		}
+	}()
+
+	// Watch the monitor file for changes
+	err = watcher.Add(monitorFile)
+	if err != nil {
+		log.Fatal().Msgf("Error watching file: %+v", err)
+	}
+
+	// Process the monitor file for the first time
+	processMonitorFile()
+
+	// Block until Interrupt or Kill signal is received
+	c := make(chan os.Signal, 1)
+	<-c
+
+	log.Info().Msg("Stopping Bazaar Query Server")
+
+}
+
+func processMonitorFile() {
 	// Read ini file
 	cfg, err := ini.Load(monitorFile)
 	if err != nil {
@@ -89,18 +138,18 @@ func main() {
 	}
 	log.Debug().Msgf("Read ini file: %s", monitorFile)
 
-	// Get values from ini file
+	// Get queries from ini file
 	section, err := cfg.GetSection("Queries")
 	if err != nil {
-		fmt.Println("Error getting section:", err)
-		os.Exit(1)
+		log.Info().Msgf("Queries section does not exist or is empty: %+v", err)
+		return
 	}
 	log.Debug().Msgf("Read %d queries", len(section.Keys()))
 
-	// Clean the CSV file
+	// Clean out the results CSV file
 	cleanCSV()
 
-	// Write the header to the CSV file
+	// Write the header to the results CSV file
 	writeCSVHeader()
 
 	// Iterate over key/vals in our ini 'Queries' section
