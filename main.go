@@ -76,8 +76,8 @@ func main() {
 	log.Debug().Msgf("Using log level: %s", *logLevel)
 
 	// Set the monitor and results file paths
-	monitorFile = fmt.Sprintf("%s/%s", *config, *monitor)
-	resultsFile = fmt.Sprintf("%s/%s", *config, *results)
+	monitorFile = fmt.Sprintf("%s\\%s", *config, *monitor)
+	resultsFile = fmt.Sprintf("%s\\%s", *config, *results)
 
 	// Provide some info about the files we are using
 	log.Info().Msgf("Using monitor file: %s", monitorFile)
