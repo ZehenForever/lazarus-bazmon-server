@@ -30,6 +30,12 @@ var queries = make(map[string]string)
 var queriesMutex = &sync.Mutex{}
 
 var reItemName = regexp.MustCompile(`\/name\|(.[^\/]+)`)
+var reSearchTerms = regexp.MustCompile(`((?:\w+\|\w+)+)\/?`)
+
+type SearchTerm struct {
+	Key string
+	Val string
+}
 
 func main() {
 	flag.Parse()
@@ -73,7 +79,7 @@ func main() {
 		log.Error().Msg("Invalid log level provided")
 		printUsage()
 	}
-	log.Debug().Msgf("Using log level: %s", *logLevel)
+	log.Info().Msgf("Using log level: %s", *logLevel)
 
 	// Set the monitor and results file paths
 	monitorFile = fmt.Sprintf("%s\\%s", *config, *monitor)
@@ -82,6 +88,14 @@ func main() {
 	// Provide some info about the files we are using
 	log.Info().Msgf("Using monitor file: %s", monitorFile)
 	log.Info().Msgf("Using results file: %s", resultsFile)
+
+	/*
+		// Clean out the results CSV file
+		cleanCSV()
+
+		// Write the header to the results CSV file
+		writeCSVHeader()
+	*/
 
 	// Watch the monitor file for changes
 	watcher, err := fsnotify.NewWatcher()
@@ -119,9 +133,6 @@ func main() {
 		log.Fatal().Msgf("Error watching file: %+v", err)
 	}
 
-	// Process the monitor file for the first time
-	//processMonitorFile()
-
 	// Block until Interrupt or Kill signal is received
 	c := make(chan os.Signal, 1)
 	<-c
@@ -146,38 +157,48 @@ func processMonitorFile() {
 	}
 	log.Debug().Msgf("Read %d queries", len(section.Keys()))
 
-	// Clean out the results CSV file
-	cleanCSV()
-
-	// Write the header to the results CSV file
-	writeCSVHeader()
+	log.Debug().Msgf("Processing %d queries", len(section.Keys()))
 
 	// Iterate over key/vals in our ini 'Queries' section
 	for _, key := range section.Keys() {
-		var itemName = reItemName.FindStringSubmatch(key.Value())[1]
-		log.Info().Str("queryID", key.Name()).Msgf("Running query for '%s'", itemName)
+		var searchTerms []SearchTerm
 
+		// If we've already queried this ID, don't do another
+		if getQuery(key.Name()) != "" {
+			log.Debug().Str("queryID", key.Name()).Msg("Duplicate query. Skipping.")
+			continue
+		}
+
+		// Update the queries map with the queryID and search terms
+		// This will help us from making duplicate queries
+		updateQueries(key.Name(), key.Value())
+
+		// Parse out all the search terms from the string
+		// Example: "7ioryb7mjb3jz90m=/Name|Item name/Stat|ac/Class|4096/Race|32/Slot|131072"
+		var re = reSearchTerms.FindAllStringSubmatch(key.Value(), -1)
+		for _, term := range re {
+			log.Debug().Str("queryID", key.Name()).Msgf("Search term '%s'", term[1])
+			terms := strings.Split(term[1], "|")
+			searchTerms = append(searchTerms, SearchTerm{Key: terms[0], Val: terms[1]})
+		}
+		log.Debug().Str("queryID", key.Name()).Msgf("Search terms: %+v", searchTerms)
+		queryBazaar(key.Name(), searchTerms)
+
+		//var itemName = reItemName.FindStringSubmatch(key.Value())[1]
+		//log.Info().Str("queryID", key.Name()).Msgf("Running query for '%s'", itemName)
 		// Query the Bazaar for each item
-		queryBazaar(key.Name(), itemName)
-		time.Sleep(1 * time.Second)
+		//queryBazaar(key.Name(), itemName)
+		//time.Sleep(1 * time.Second)
 	}
 }
 
 // queryBazaar queries the Bazaar for the item and writes the results to the CSV file
-func queryBazaar(queryID, itemName string) {
-	log.Debug().Str("queryID", queryID).Msgf("Querying Bazaar for item '%s'", itemName)
-
-	// If we have already queried this ID, don't do another
-	if getQuery(queryID) != "" {
-		log.Debug().Str("queryID", queryID).Msg("Duplicate query. Skipping.")
-		return
-	}
-
-	// Update the queries map with the queryID and itemName
-	updateQueries(queryID, itemName)
+// func queryBazaar(queryID, itemName string) {
+func queryBazaar(queryID string, searchTerms []SearchTerm) {
+	log.Debug().Str("queryID", queryID).Msgf("Querying Bazaar for item '%+v'", searchTerms)
 
 	// Build our Bazaar web site search URL
-	var url = fmt.Sprintf("https://www.lazaruseq.com/Magelo/index.php?page=bazaar&item=%s", url.QueryEscape(itemName))
+	var url = buildURL(searchTerms)
 	log.Debug().Str("queryID", queryID).Msgf("Query URL: %s", url)
 
 	// Fetch the Bazaar web site search URL
@@ -223,6 +244,24 @@ func queryBazaar(queryID, itemName string) {
 	// Write the rows to the CSV file
 	writeCSV(rows)
 	log.Info().Str("queryID", queryID).Msgf("Wrote %d rows to CSV", len(rows))
+}
+
+func buildURL(searchTerms []SearchTerm) string {
+	var lazUrl = "https://www.lazaruseq.com/Magelo/index.php?page=bazaar"
+	for _, term := range searchTerms {
+		switch {
+		case term.Key == "Name":
+			lazUrl += "&item="
+		case term.Key == "Class":
+			lazUrl += "&class="
+		case term.Key == "Stat":
+			lazUrl += "&stat="
+		case term.Key == "Slot":
+			lazUrl += "&slot="
+		}
+		lazUrl += url.QueryEscape(term.Val)
+	}
+	return lazUrl
 }
 
 // cleanCSV opens the CSV file and removes all rows
