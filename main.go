@@ -29,8 +29,7 @@ var resultsFile string
 var queries = make(map[string]string)
 var queriesMutex = &sync.Mutex{}
 
-var reItemName = regexp.MustCompile(`\/name\|(.[^\/]+)`)
-var reSearchTerms = regexp.MustCompile(`((?:\w+\|\w+)+)\/?`)
+var reSearchTerms = regexp.MustCompile(`((?:\w+\|[\w\s]+)+)\/?`)
 
 type SearchTerm struct {
 	Key string
@@ -89,13 +88,11 @@ func main() {
 	log.Info().Msgf("Using monitor file: %s", monitorFile)
 	log.Info().Msgf("Using results file: %s", resultsFile)
 
-	/*
-		// Clean out the results CSV file
-		cleanCSV()
+	// Clean out the results CSV file
+	cleanCSV()
 
-		// Write the header to the results CSV file
-		writeCSVHeader()
-	*/
+	// Write the header to the results CSV file
+	writeCSVHeader()
 
 	// Watch the monitor file for changes
 	watcher, err := fsnotify.NewWatcher()
@@ -254,10 +251,22 @@ func buildURL(searchTerms []SearchTerm) string {
 			lazUrl += "&item="
 		case term.Key == "Class":
 			lazUrl += "&class="
+		case term.Key == "Race":
+			lazUrl += "&race="
 		case term.Key == "Stat":
 			lazUrl += "&stat="
 		case term.Key == "Slot":
 			lazUrl += "&slot="
+		case term.Key == "Aug":
+			lazUrl += "&aug_type="
+		case term.Key == "Type":
+			lazUrl += "&type="
+		case term.Key == "PriceMin":
+			lazUrl += "&pricemin="
+		case term.Key == "PriceMax":
+			lazUrl += "&pricemax="
+		default:
+			continue
 		}
 		lazUrl += url.QueryEscape(term.Val)
 	}
