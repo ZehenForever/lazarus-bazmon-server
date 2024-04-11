@@ -26,11 +26,11 @@ Setting up and using the the front end Lua script can be found in [its repositor
     ```
 1. Run the main program with a CLI flag that tells it where the MQ/E3 `conf` directory is located.  This must match how you installed your Lua script.  The defaults should work out of the box.
     ```shell
-    go run main.go -config '/c/E3NextAndMQNext/config'
+    go run main.go -config "C:\PathToMQE3\config"
     ```
     And optionally with more verbose output, if desired:
     ```shell
-    go run main.go -config '/c/E3NextAndMQNext/config' -logLevel debug
+    go run main.go -config "C:\PathToMQE3\config" -logLevel debug
     ```
 
 When it first starts up, it should provide some output depending on your log level:
@@ -38,15 +38,15 @@ When it first starts up, it should provide some output depending on your log lev
 ```
 2024-03-18T12:44:13-06:00 INF Starting Bazaar Query Server
 2024-03-18T12:44:13-06:00 DBG Using log level: debug
-2024-03-18T12:44:13-06:00 INF Using monitor file: C:/E3NextAndMQNext/config/BazMonitor.ini
-2024-03-18T12:44:13-06:00 INF Using results file: C:/E3NextAndMQNext/config/BazResults.csv
+2024-03-18T12:44:13-06:00 INF Using monitor file: C:\E3NextAndMQNext\config\BazMonitor.ini
+2024-03-18T12:44:13-06:00 INF Using results file: C:\E3NextAndMQNext\config\BazResults.csv
 ```
 And then when the Lua script is run on the client and you click the "Search" button in the UI, that will write to the `BazMonitor.ini` file, and this script will see that change on the file system, read that search request, and query the Lazarus Magelo Bazaar web app, and then write its results to the `BazResults.csv` file.
 
 ```
-2024-03-18T12:44:26-06:00 DBG File event: WRITE         "C:\\E3NextAndMQNext\\config\\BazMonitor.ini"
+2024-03-18T12:44:26-06:00 DBG File event: WRITE         "C:\E3NextAndMQNext\config\BazMonitor.ini"
 2024-03-18T12:44:26-06:00 INF File modified: C:\E3NextAndMQNext\config\BazMonitor.ini
-2024-03-18T12:44:26-06:00 DBG Read ini file: C:/E3NextAndMQNext/config/BazMonitor.ini
+2024-03-18T12:44:26-06:00 DBG Read ini file: C:\E3NextAndMQNext\config\BazMonitor.ini
 2024-03-18T12:44:26-06:00 DBG Read 5 queries
 2024-03-18T12:44:26-06:00 DBG Cleaned CSV file, removing all rows
 2024-03-18T12:44:26-06:00 DBG Updated CSV file with header row
