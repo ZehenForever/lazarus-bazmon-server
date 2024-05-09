@@ -265,6 +265,8 @@ func buildURL(searchTerms []SearchTerm) string {
 			lazUrl += "&pricemin="
 		case term.Key == "PriceMax":
 			lazUrl += "&pricemax="
+		case term.Key == "Direction":
+			lazUrl += "&direction="
 		default:
 			continue
 		}
