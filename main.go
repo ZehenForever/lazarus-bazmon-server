@@ -35,7 +35,7 @@ var monitorQueries = make(map[string]string)
 
 var searchQueriesMutex = &sync.Mutex{}
 var monitorQueriesMutex = &sync.Mutex{}
-var monitorPollDelay = 300
+var monitorPollDelay = 600
 
 var reSearchTerms = regexp.MustCompile(`((?:\w+\|[\w\s\>\<=]+)+)\/?`)
 
@@ -190,7 +190,7 @@ func processMonitorFile() {
 			return
 		}
 		if monitorPollDelay < 60 {
-			log.Warn().Msgf("Monitor Poll Delay is less than 60 seconds. Setting to 60 seconds")
+			log.Warn().Msgf("Monitor Poll Delay cannot be less than 60 seconds. Setting to 60 seconds")
 			monitorPollDelay = 60
 		}
 	}
